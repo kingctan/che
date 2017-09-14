@@ -13,7 +13,7 @@ package org.eclipse.che.api.deploy;
 import com.google.inject.AbstractModule;
 import org.eclipse.che.api.environment.server.MachineLinksInjector;
 import org.eclipse.che.api.workspace.server.WorkspaceServiceLinksInjector;
-import org.eclipse.che.commons.auth.token.HeaderRequestTokenExtractor;
+import org.eclipse.che.commons.auth.token.ChainedTokenExtractor;
 import org.eclipse.che.commons.auth.token.RequestTokenExtractor;
 import org.eclipse.che.inject.DynaModule;
 import org.eclipse.che.machine.authentication.server.MachineAuthLinksInjector;
@@ -36,7 +36,7 @@ public class MachineAuthModule extends AbstractModule {
     bind(org.eclipse.che.machine.authentication.server.MachineTokenService.class);
     bind(org.eclipse.che.machine.authentication.server.MachineTokenRegistry.class);
     bind(org.eclipse.che.machine.authentication.server.MachineSessionInvalidator.class);
-    bind(RequestTokenExtractor.class).to(HeaderRequestTokenExtractor.class);
+    bind(RequestTokenExtractor.class).to(ChainedTokenExtractor.class);
     bind(WorkspaceServiceLinksInjector.class)
         .to(org.eclipse.che.machine.authentication.server.WorkspaceServiceAuthLinksInjector.class);
     bind(org.eclipse.che.api.environment.server.MachineInstanceProvider.class)

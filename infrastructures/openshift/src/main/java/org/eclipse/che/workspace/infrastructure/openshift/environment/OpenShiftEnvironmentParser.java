@@ -112,9 +112,6 @@ public class OpenShiftEnvironmentParser {
         services.put(service.getMetadata().getName(), service);
       } else if (object instanceof Route) {
         isAnyRoutePresent = true;
-      } else if (object instanceof PersistentVolumeClaim) {
-        PersistentVolumeClaim pvc = (PersistentVolumeClaim) object;
-        pvcs.put(pvc.getMetadata().getName(), pvc);
       } else {
         throw new ValidationException(
             format("Found unknown object type '%s'", object.getMetadata()));

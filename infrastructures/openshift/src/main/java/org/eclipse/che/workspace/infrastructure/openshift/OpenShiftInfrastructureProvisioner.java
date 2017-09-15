@@ -16,6 +16,7 @@ import org.eclipse.che.api.core.model.workspace.runtime.RuntimeIdentity;
 import org.eclipse.che.api.workspace.server.spi.InfrastructureException;
 import org.eclipse.che.api.workspace.server.spi.InternalEnvironment;
 import org.eclipse.che.workspace.infrastructure.openshift.environment.OpenShiftEnvironment;
+import org.eclipse.che.workspace.infrastructure.openshift.provision.PrefixedNameProvisioner;
 import org.eclipse.che.workspace.infrastructure.openshift.provision.installer.InstallerConfigProvisioner;
 import org.eclipse.che.workspace.infrastructure.openshift.provision.volume.PersistentVolumeClaimProvisioner;
 
@@ -30,13 +31,16 @@ public class OpenShiftInfrastructureProvisioner {
 
   private final InstallerConfigProvisioner installerConfigProvisioner;
   private final PersistentVolumeClaimProvisioner persistentVolumeClaimProvisioner;
+  private final PrefixedNameProvisioner prefixNameProvisioner;
 
   @Inject
   public OpenShiftInfrastructureProvisioner(
       InstallerConfigProvisioner installerConfigProvisioner,
-      PersistentVolumeClaimProvisioner projectVolumeProvisioner) {
+      PersistentVolumeClaimProvisioner projectVolumeProvisioner,
+      PrefixedNameProvisioner prefixNameProvisioner) {
     this.installerConfigProvisioner = installerConfigProvisioner;
     this.persistentVolumeClaimProvisioner = projectVolumeProvisioner;
+    this.prefixNameProvisioner = prefixNameProvisioner;
   }
 
   public void provision(
@@ -44,5 +48,6 @@ public class OpenShiftInfrastructureProvisioner {
       throws InfrastructureException {
     installerConfigProvisioner.provision(environment, osEnv, identity);
     persistentVolumeClaimProvisioner.provision(environment, osEnv, identity);
+    prefixNameProvisioner.provision(environment, osEnv, identity);
   }
 }

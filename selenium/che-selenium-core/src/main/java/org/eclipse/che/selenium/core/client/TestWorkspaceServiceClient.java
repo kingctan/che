@@ -26,10 +26,12 @@ import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.model.machine.Server;
 import org.eclipse.che.api.core.model.workspace.Workspace;
 import org.eclipse.che.api.core.model.workspace.WorkspaceStatus;
+import org.eclipse.che.api.core.rest.HttpJsonRequest;
 import org.eclipse.che.api.core.rest.HttpJsonRequestFactory;
 import org.eclipse.che.api.workspace.shared.dto.EnvironmentDto;
 import org.eclipse.che.api.workspace.shared.dto.WorkspaceConfigDto;
 import org.eclipse.che.api.workspace.shared.dto.WorkspaceDto;
+import org.eclipse.che.commons.annotation.Nullable;
 import org.eclipse.che.dto.server.DtoFactory;
 import org.eclipse.che.selenium.core.provider.TestApiEndpointUrlProvider;
 import org.eclipse.che.selenium.core.user.TestUser;
@@ -64,53 +66,43 @@ public class TestWorkspaceServiceClient {
   }
 
   /** Returns the list of workspaces names that belongs to the user. */
-  public List<String> getAll() throws Exception {
-    List<WorkspaceDto> workspaces =
-        requestFactory.fromUrl(getBaseUrl()).request().asList(WorkspaceDto.class);
+  public List<String> getAll(TestUser owner) throws Exception {
+    List<WorkspaceDto> workspaces = getHttpJsonRequest(owner).request().asList(WorkspaceDto.class);
+
     return workspaces.stream().map(ws -> ws.getConfig().getName()).collect(Collectors.toList());
   }
 
   /** Sends stop workspace request. */
-  private void sendStopRequest(String workspaceName, String userName, boolean createSnapshot)
+  private void sendStopRequest(String workspaceName, TestUser owner, boolean createSnapshot)
       throws Exception {
-    if (!exists(workspaceName, userName)) {
+    if (!exists(workspaceName, owner)) {
       return;
     }
 
-    Workspace workspace = getByName(workspaceName, userName);
+    Workspace workspace = getByName(workspaceName, owner);
     String apiUrl =
         getIdBasedUrl(workspace.getId()) + "/runtime/?create-snapshot=" + valueOf(createSnapshot);
 
-    requestFactory.fromUrl(apiUrl).useDeleteMethod().request();
+    getHttpJsonRequest(apiUrl, owner).useDeleteMethod().request();
   }
 
   /** Stops workspace. */
-  public void stop(String workspaceName, String userName, boolean createSnapshot) throws Exception {
-    sendStopRequest(workspaceName, userName, createSnapshot);
-    waitStatus(workspaceName, userName, STOPPED);
-  }
-
-  /** Returns workspace of default user by its name. */
-  public Workspace getByName(String workspace, String username) throws Exception {
-    return requestFactory
-        .fromUrl(getNameBasedUrl(workspace, username))
-        .request()
-        .asDto(WorkspaceDto.class);
+  public void stop(String workspaceName, boolean createSnapshot, TestUser owner) throws Exception {
+    sendStopRequest(workspaceName, owner, createSnapshot);
+    waitStatus(workspaceName, STOPPED, owner);
   }
 
   /** Returns workspace by its name. */
-  public Workspace getByName(String workspace, String username, String authToken) throws Exception {
-    return requestFactory
-        .fromUrl(getNameBasedUrl(workspace, username))
-        .setAuthorizationHeader(authToken)
+  public Workspace getByName(String workspace, TestUser owner) throws Exception {
+    return getHttpJsonRequest(getNameBasedUrl(workspace, owner), owner)
         .request()
         .asDto(WorkspaceDto.class);
   }
 
   /** Indicates if workspace exists. */
-  public boolean exists(String workspace, String username) throws Exception {
+  public boolean exists(String workspace, TestUser owner) throws Exception {
     try {
-      requestFactory.fromUrl(getNameBasedUrl(workspace, username)).request();
+      getHttpJsonRequest(getNameBasedUrl(workspace, owner), owner).request();
     } catch (NotFoundException e) {
       return false;
     }
@@ -119,32 +111,32 @@ public class TestWorkspaceServiceClient {
   }
 
   /** Deletes workspace of default user. */
-  public void delete(String workspaceName, String userName) throws Exception {
-    if (!exists(workspaceName, userName)) {
+  public void delete(String workspaceName, TestUser owner) throws Exception {
+    if (!exists(workspaceName, owner)) {
       return;
     }
 
-    Workspace workspace = getByName(workspaceName, userName);
+    Workspace workspace = getByName(workspaceName, owner);
     if (workspace.getStatus() != STOPPED) {
-      stop(workspaceName, userName, false);
+      stop(workspaceName, false, owner);
     }
 
-    requestFactory.fromUrl(getIdBasedUrl(workspace.getId())).useDeleteMethod().request();
+    getHttpJsonRequest(getIdBasedUrl(workspace.getId()), owner).useDeleteMethod().request();
 
     LOG.info(
-        "Workspace name='{}', id='{}' and of user with name='{}' is removed",
+        "Workspace name='{}', id='{}', username='{}' is removed",
         workspaceName,
         workspace.getId(),
-        userName);
+        owner.getName());
   }
 
   /** Waits needed status. */
-  public void waitStatus(String workspaceName, String userName, WorkspaceStatus expectedStatus)
+  public void waitStatus(String workspaceName, WorkspaceStatus expectedStatus, TestUser owner)
       throws Exception {
 
     WorkspaceStatus status = null;
     for (int i = 0; i < 120; i++) {
-      status = getByName(workspaceName, userName).getStatus();
+      status = getByName(workspaceName, owner).getStatus();
       if (status == expectedStatus) {
         return;
       } else {
@@ -157,9 +149,20 @@ public class TestWorkspaceServiceClient {
             "Workspace %s, status=%s, expected status=%s", workspaceName, status, expectedStatus));
   }
 
-  /** Creates a new workspace. */
+  /** Creates a new workspace for default user. */
   public Workspace createWorkspace(
       String workspaceName, int memory, MemoryMeasure memoryUnit, String pathToPattern)
+      throws Exception {
+    return createWorkspace(workspaceName, memory, memoryUnit, pathToPattern, null);
+  }
+
+  /** Creates a new workspace. */
+  public Workspace createWorkspace(
+      String workspaceName,
+      int memory,
+      MemoryMeasure memoryUnit,
+      String pathToPattern,
+      TestUser owner)
       throws Exception {
     String json = FileUtils.readFileToString(new File(pathToPattern), Charset.forName("UTF-8"));
     WorkspaceConfigDto workspace =
@@ -177,22 +180,44 @@ public class TestWorkspaceServiceClient {
     workspace.setDefaultEnv(workspaceName);
 
     WorkspaceDto workspaceDto =
-        requestFactory
-            .fromUrl(getBaseUrl())
+        getHttpJsonRequest(getBaseUrl(), owner)
             .usePostMethod()
             .setBody(workspace)
             .request()
             .asDto(WorkspaceDto.class);
 
-    LOG.info("Workspace name='{}' and id='{}' created", workspaceName, workspaceDto.getId());
+    LOG.info(
+        "Workspace name='{}', id='{}' for {} created",
+        workspaceName,
+        workspaceDto.getId(),
+        owner != null ? String.format("username=%s", owner.getName()) : "default user");
 
     return workspaceDto;
   }
 
+  private HttpJsonRequest getHttpJsonRequest(String url, @Nullable TestUser user) {
+    HttpJsonRequest httpJsonRequest = requestFactory.fromUrl(url);
+    if (user != null) {
+      return httpJsonRequest.setAuthorizationHeader(user.getAuthToken());
+    }
+
+    return httpJsonRequest;
+  }
+
+  /** @return HttpJsonRequest class instance for default user. */
+  private HttpJsonRequest getHttpJsonRequest(String url) {
+    return getHttpJsonRequest(url, null);
+  }
+
+  /** @return HttpJsonRequest class instance for certain user. */
+  private HttpJsonRequest getHttpJsonRequest(TestUser owner) {
+    return getHttpJsonRequest(getBaseUrl(), owner);
+  }
+
   /** Sends start workspace request. */
-  public void sendStartRequest(String workspaceId, String workspaceName) throws Exception {
-    requestFactory
-        .fromUrl(getIdBasedUrl(workspaceId) + "/runtime")
+  public void sendStartRequest(String workspaceId, String workspaceName, TestUser owner)
+      throws Exception {
+    getHttpJsonRequest(getIdBasedUrl(workspaceId) + "/runtime", owner)
         .addQueryParam("environment", workspaceName)
         .usePostMethod()
         .request();
@@ -201,13 +226,13 @@ public class TestWorkspaceServiceClient {
   /** Starts workspace. */
   public void start(String workspaceId, String workspaceName, TestUser workspaceOwner)
       throws Exception {
-    sendStartRequest(workspaceId, workspaceName);
-    waitStatus(workspaceName, workspaceOwner.getName(), RUNNING);
+    sendStartRequest(workspaceId, workspaceName, workspaceOwner);
+    waitStatus(workspaceName, RUNNING, workspaceOwner);
   }
 
   /** Gets workspace by its id. */
   public Workspace getById(String workspaceId) throws Exception {
-    return requestFactory.fromUrl(getIdBasedUrl(workspaceId)).request().asDto(WorkspaceDto.class);
+    return getHttpJsonRequest(getIdBasedUrl(workspaceId)).request().asDto(WorkspaceDto.class);
   }
 
   /** Return server URL related with defined port */
@@ -234,7 +259,7 @@ public class TestWorkspaceServiceClient {
    */
   public Server getServerByExposedPort(String workspaceId, String exposedPort) throws Exception {
     Workspace workspace =
-        requestFactory.fromUrl(getIdBasedUrl(workspaceId)).request().asDto(WorkspaceDto.class);
+        getHttpJsonRequest(getIdBasedUrl(workspaceId)).request().asDto(WorkspaceDto.class);
 
     ensureRunningStatus(workspace);
 
@@ -257,8 +282,12 @@ public class TestWorkspaceServiceClient {
     }
   }
 
-  private String getNameBasedUrl(String workspaceName, String username) {
-    return getBaseUrl() + "/" + testUserNamespaceResolver.resolve(username) + "/" + workspaceName;
+  private String getNameBasedUrl(String workspaceName, TestUser owner) {
+    return getBaseUrl()
+        + "/"
+        + testUserNamespaceResolver.resolve(owner.getName())
+        + "/"
+        + workspaceName;
   }
 
   private String getIdBasedUrl(String workspaceId) {

@@ -89,7 +89,7 @@ public class DirectUrlFactoryWithRootFolder {
 
     String currentWsId =
         workspaceServiceClient
-            .getByName(seleniumWebDriver.getWorkspaceNameFromBrowserUrl(), testUser.getName())
+            .getByName(seleniumWebDriver.getWorkspaceNameFromBrowserUrl(), testUser)
             .getId();
     List<String> visibleItems = projectExplorer.getNamesOfAllOpenItems();
     assertTrue(visibleItems.containsAll(expectedItemsAfterClonning));

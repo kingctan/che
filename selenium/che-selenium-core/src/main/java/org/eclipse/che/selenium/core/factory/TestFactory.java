@@ -71,11 +71,11 @@ public class TestFactory {
     String originalName = factoryDto.getWorkspace().getName();
     String workspace2delete = originalName;
     for (int i = 1; ; i++) {
-      if (!workspaceServiceClient.exists(workspace2delete, owner.getName())) {
+      if (!workspaceServiceClient.exists(workspace2delete, owner)) {
         break;
       }
 
-      workspaceServiceClient.delete(workspace2delete, owner.getName());
+      workspaceServiceClient.delete(workspace2delete, owner);
       workspace2delete = originalName + "_" + i;
     }
   }

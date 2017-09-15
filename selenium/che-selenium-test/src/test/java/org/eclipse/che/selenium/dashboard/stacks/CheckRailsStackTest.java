@@ -49,7 +49,7 @@ public class CheckRailsStackTest {
 
   @AfterClass
   public void tearDown() throws Exception {
-    workspaceServiceClient.delete(WS_NAME, user.getName());
+    workspaceServiceClient.delete(WS_NAME, user);
   }
 
   @Test

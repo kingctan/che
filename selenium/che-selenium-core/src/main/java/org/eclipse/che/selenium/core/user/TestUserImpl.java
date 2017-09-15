@@ -16,6 +16,7 @@ import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.PreDestroy;
+import org.eclipse.che.api.core.model.user.User;
 import org.eclipse.che.commons.lang.NameGenerator;
 import org.eclipse.che.selenium.core.client.TestAuthServiceClient;
 import org.eclipse.che.selenium.core.client.TestUserServiceClient;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 /** @author Anatolii Bazko */
 public class TestUserImpl implements TestUser {
+
   private static final Logger LOG = LoggerFactory.getLogger(TestUserImpl.class);
 
   private final String email;
@@ -47,6 +49,28 @@ public class TestUserImpl implements TestUser {
         userServiceClient,
         workspaceServiceClient,
         authServiceClient);
+  }
+
+  /**
+   * Instantiate class for the has already existed user.
+   *
+   * @param cheUser che user DTO
+   * @param authToken auth token of user
+   * @param userServiceClient TestUserServiceClient instance
+   * @param workspaceServiceClient TestWorkspaceServiceClient instance
+   */
+  public TestUserImpl(
+      User cheUser,
+      String authToken,
+      TestUserServiceClient userServiceClient,
+      TestWorkspaceServiceClient workspaceServiceClient) {
+    this.userServiceClient = userServiceClient;
+    this.workspaceServiceClient = workspaceServiceClient;
+    this.email = cheUser.getEmail();
+    this.password = cheUser.getPassword();
+    this.name = cheUser.getName();
+    this.id = cheUser.getId();
+    this.authToken = authToken;
   }
 
   /** To instantiate user with specific e-mail. */
@@ -100,17 +124,17 @@ public class TestUserImpl implements TestUser {
   public void delete() {
     List<String> workspaces = new ArrayList<>();
     try {
-      workspaces = workspaceServiceClient.getAll();
+      workspaces = workspaceServiceClient.getAll(this);
     } catch (Exception e) {
       LOG.error("Failed to get all workspaces.", e);
     }
 
     for (String workspace : workspaces) {
       try {
-        workspaceServiceClient.delete(workspace, name);
+        workspaceServiceClient.delete(workspace, this);
       } catch (Exception e) {
         LOG.error(
-            format("User name='%s' failed to remove workspace name='%s'", workspace, name), e);
+            format("User name='%s' failed to remove workspace name='%s'", name, workspace), e);
       }
     }
 

@@ -55,7 +55,7 @@ public class CreateAndDeleteProjectsTest {
 
   @AfterClass
   public void tearDown() throws Exception {
-    workspaceServiceClient.delete(WORKSPACE, defaultTestUser.getName());
+    workspaceServiceClient.delete(WORKSPACE, defaultTestUser);
   }
 
   @Test

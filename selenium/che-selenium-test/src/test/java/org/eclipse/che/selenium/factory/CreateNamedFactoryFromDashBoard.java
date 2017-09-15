@@ -70,7 +70,7 @@ public class CreateNamedFactoryFromDashBoard {
   @AfterClass
   public void tearDown() throws Exception {
     String newWorkspaceName = testWorkspace.getName() + NEW_WORKSPACE_SUFFIX;
-    workspaceServiceClient.delete(newWorkspaceName, user.getName());
+    workspaceServiceClient.delete(newWorkspaceName, user);
   }
 
   @Test

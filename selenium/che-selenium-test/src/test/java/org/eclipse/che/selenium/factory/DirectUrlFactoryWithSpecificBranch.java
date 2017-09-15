@@ -80,7 +80,7 @@ public class DirectUrlFactoryWithSpecificBranch {
 
     String wsId =
         workspaceServiceClient
-            .getByName(seleniumWebDriver.getWorkspaceNameFromBrowserUrl(), testUser.getName())
+            .getByName(seleniumWebDriver.getWorkspaceNameFromBrowserUrl(), testUser)
             .getId();
 
     List<String> visibleItems = projectExplorer.getNamesOfAllOpenItems();

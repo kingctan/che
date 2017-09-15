@@ -41,7 +41,7 @@ public class RenameWorkspaceTest {
 
   @AfterClass
   public void tearDown() throws Exception {
-    workspaceServiceClient.delete(CHANGE_WORKSPACE_NAME, user.getName());
+    workspaceServiceClient.delete(CHANGE_WORKSPACE_NAME, user);
   }
 
   @Test

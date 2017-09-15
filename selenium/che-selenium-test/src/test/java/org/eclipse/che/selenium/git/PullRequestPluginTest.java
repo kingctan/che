@@ -114,7 +114,7 @@ public class PullRequestPluginTest {
   @AfterClass
   public void tearDown() throws Exception {
     if (factoryWsName != null) {
-      workspaceServiceClient.delete(factoryWsName, user.getName());
+      workspaceServiceClient.delete(factoryWsName, user);
     }
 
     List<String> listPullRequest =
